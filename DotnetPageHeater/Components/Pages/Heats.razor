@@ -1,0 +1,98 @@
+﻿@page "/heats"
+@using DotnetPageHeater.Models
+@using DotnetPageHeater.Services
+@rendermode InteractiveServer
+
+@inject HeatmapService HeatmapService
+@inject IJSRuntime JSRuntime 
+
+<div  class="container">
+    <h3 >Heatmap and Event Analysis</h3>
+
+    <InputText @bind-Value="pageUrl" type="text" />
+    <button  class="btn btn-primary" @onclick="LoadData">Load Data</button> 
+   
+
+    @if (heatmapData != null && heatmapData.Any())
+    { 
+            <h5 >Heatmap Data</h5>
+            <div id="heatmapContainer" style="width: 100%; height: 400px; position: relative;">
+                <img src="counter.png" style="width: 100%; height: 100%; object-fit: contain;" />
+                <canvas id="heatmapCanvas" style="position: absolute; top: 0; left: 0;"></canvas>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Coordinates</th>
+                        <th>Count</th>
+                        <th>Element Path</th>
+                        <th>Viewport Size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var (coords, data) in heatmapData)
+                    {
+                        <tr>
+                            <td>@coords</td>
+                            <td>@data.Count</td>
+                            <td>@data.ElementPath</td>
+                            <td>@data.ViewportWidth x @data.ViewportHeight</td>
+                        </tr>
+                    }
+                </tbody>
+            </table> 
+    }
+
+    @if (eventData != null && eventData.Any())
+    {
+        <div >
+            <h5 >Event Tracking Data</h5>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Event Name</th>
+                        <th>Count</th>
+                        <th>Element Path</th>
+                        <th>Viewport Size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var (eventName, data) in eventData)
+                    {
+                        <tr>
+                            <td>@eventName</td>
+                            <td>@data.Count</td>
+                            <td>@data.ElementPath</td>
+                            <td>@data.ViewportWidth x @data.ViewportHeight</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private string pageUrl = "";
+    private Dictionary<string, HeatMapData> heatmapData;
+    private Dictionary<string, EventData> eventData;
+
+    private async Task LoadData()
+    {
+        heatmapData = HeatmapService.GetHeatmapData(pageUrl);
+        eventData = HeatmapService.GetEventData(pageUrl);
+
+        if (heatmapData.Any())
+        {
+            await JSRuntime.InvokeVoidAsync("drawHeatmap", heatmapData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Count));
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("initHeatmap");
+        }
+    }
+}
